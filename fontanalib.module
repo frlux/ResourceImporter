@@ -1,0 +1,87 @@
+<?php
+ 
+/**
+ * @file
+ * Fontanalib API integration module file.
+ */
+ 
+use Drupal\Core\Database\Database;
+use Drupal\fontanalib\FontanalibConnection;
+ 
+/**
+ * Implements hook_cron().
+ */
+function fontanalib_cron() {
+  $state     = \Drupal::state();
+  $locked    = $state->get('fontanalib.evergreen_import_semaphore', FALSE);
+  $last_time = $state->get('fontanalib.evergreen_import_last', FALSE);
+ 
+  if (!$locked && $last_time) {
+    $database   = Database::getConnection();
+    $fontanalib     = new FontanalibConnection();
+    $queue      = \Drupal::queue('fontanalib_evergreen_import_worker');
+    $api_limit  = $state->get('fontanalib.cron_download_limit', 100);
+    $save_limit = $state->get('fontanalib.cron_process_limit', 10);
+    $data       = NULL;
+    $new_data   = [];
+ 
+    // Pull all data into an array
+    // TODO: limit checks in case all of the thousands of Evergreens have new
+    // revisions
+    do {
+      // If there is have a 'next' URL returned, use that one for simplicity
+      $next_page = NULL;
+      if (isset($data->pagination->next)) {
+        $next_page = $data->pagination->next;
+      }
+      $data = $fontanalib->queryEndpoint('evergreensDetailFull', [
+        'limit'      => $api_limit,
+        'start_time' => $last_time,
+        'next_page'  => isset($next_page) ? $next_page : NULL,
+      ]);
+      $new_data = array_merge($new_data, $data->response_data);
+    } while (isset($data->pagination->next));
+ 
+    $gids      = [];
+    $new_count = count($new_data);
+    foreach ($new_data as $index => $evergreen_data) {
+      if (empty($evergreen_data->gid)) {
+        \Drupal::logger('fontanalib')->warning(t('Empty GID at progress @p for the data:<br /><pre>@v</pre>', [
+          '@v' => print_r($evergreen_data, TRUE),
+          '@p' => $index,
+        ]));
+        continue;
+      }
+      elseif (!is_numeric($evergreen_data->gid)) {
+        \Drupal::logger('fontanalib')->warning(t('Non-numeric GID at progress @p for the data:<br /><pre>@v</pre>', [
+          '@v' => print_r($evergreen_data, TRUE),
+          '@p' => $index,
+        ]));
+        continue;
+      }
+      // Save the data to the local database
+      $database->merge('fontanalib_evergreen_staging')
+        ->key(['gid' => (int) $evergreen_data->gid])
+        ->insertFields([
+          'gid'  => (int) $evergreen_data->gid,
+          'data' => serialize($evergreen_data),
+        ])
+        ->updateFields(['data' => serialize($evergreen_data)])
+        ->execute()
+      ;
+      $gids[] = (int) $evergreen_data->gid;
+      // If enough Evergreens have been stored or the last one just was strored,
+      // then queue up a worker to process them and reset the IDs array
+      if (count($gids) == $save_limit || $index + 1 == $new_count) {
+        $queue->createItem(['gids' => $gids]);
+        $gids = [];
+      }
+    }
+    // Store the timestamp in state
+    $last_time = \Drupal::time()->getRequestTime();
+    \Drupal::state()->set('fontanalib.evergreen_import_last', $last_time);
+  }
+  elseif ($locked) {
+    \Drupal::logger('fontanalib')->warning(t('Fontanalib Cron did not run because it is locked.'));
+  }
+}

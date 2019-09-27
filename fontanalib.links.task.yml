@@ -1,0 +1,14 @@
+fontanalib.overview:
+  title: API Status
+  route_name: fontanalib.overview
+  base_route: fontanalib.overview
+
+fontanalib.evergreen_import:
+  title: Evergreen Import
+  route_name: fontanalib.evergreen_import
+  base_route: fontanalib.overview
+
+fontanalib.configuration:
+  title: Configure
+  route_name: fontanalib.configuration
+  base_route: fontanalib.overview

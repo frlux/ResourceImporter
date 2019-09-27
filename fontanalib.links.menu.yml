@@ -1,0 +1,15 @@
+fontanalib.overview:
+  title: Fontanalib API Status
+  route_name: fontanalib.overview
+  description: 'Configuration & information for the Fontanalib API integration.'
+  parent: system.admin_config_services
+
+fontanalib.evergreen_import:
+  title: Evergreen Import
+  route_name: fontanalib.evergreen_import
+  parent: fontanalib.overview
+
+fontanalib.configuration:
+  title: Configure
+  route_name: fontanalib.configuration
+  parent: fontanalib.overview

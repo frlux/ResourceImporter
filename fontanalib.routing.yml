@@ -1,0 +1,29 @@
+fontanalib.overview:
+  path: '/admin/config/services/fontanalib'
+  defaults:
+    _controller: '\Drupal\fontanalib\Controller\FontanalibOverviewController::showOverview'
+    _title: 'Fontanalib API Status Report'
+  requirements:
+    _permission: 'Fontanalib Evergreen import'
+  options:
+    _admin_route: TRUE
+
+fontanalib.evergreen_import:
+  path: '/admin/config/services/fontanalib/evergreen-import'
+  defaults:
+    _form: '\Drupal\fontanalib\Form\FontanalibEvergreenImportForm'
+    _title: 'Fontanalib API: Evergreen Import'
+  requirements:
+    _permission: 'Fontanalib Evergreen import'
+  options:
+    _admin_route: TRUE
+
+fontanalib.configuration:
+  path: '/admin/config/services/fontanalib/config'
+  defaults:
+    _form: '\Drupal\fontanalib\Form\FontanalibConfigurationForm'
+    _title: 'fontanalib API Configuration'
+  requirements:
+    _permission: 'fontanalib admin config'
+  options:
+    _admin_route: TRUE
